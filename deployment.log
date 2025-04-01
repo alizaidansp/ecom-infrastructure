@@ -1,0 +1,179 @@
+[DEPLOYMENT] Validating Terraform configuration...
+[32m[1mSuccess![0m The configuration is valid.
+[0m
+[DEPLOYMENT] Applying infrastructure...
+[0m[1mrandom_password.jwt: Refreshing state... [id=none][0m
+[0m[1mrandom_password.db_password: Refreshing state... [id=none][0m
+[0m[1maws_secretsmanager_secret.rds_secret: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:my-rds-secret-w84Jb6][0m
+[0m[1maws_cloudwatch_log_group.frontend_logs: Refreshing state... [id=/ecs/prod/frontend][0m
+[0m[1maws_secretsmanager_secret.jwt_secret: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:app-jwt-secret-M4pr6A][0m
+[0m[1maws_ecs_cluster.main: Refreshing state... [id=arn:aws:ecs:eu-west-1:183631301567:cluster/app-cluster][0m
+[0m[1maws_vpc.main: Refreshing state... [id=vpc-08e361d69fd5dd418][0m
+[0m[1maws_cloudwatch_log_group.ecs_logs: Refreshing state... [id=/ecs/app][0m
+[0m[1maws_secretsmanager_secret.frontend_url: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:frontend-url-nFoFRU][0m
+[0m[1maws_eip.nat: Refreshing state... [id=eipalloc-0c2b75e0b8815555b][0m
+[0m[1maws_iam_role.rds_proxy_role: Refreshing state... [id=rds-proxy-role][0m
+[0m[1maws_iam_role.ecs_execution_role: Refreshing state... [id=ecs-execution-role][0m
+[0m[1maws_cloudwatch_log_group.backend_logs: Refreshing state... [id=/ecs/prod/backend][0m
+[0m[1maws_secretsmanager_secret_version.rds_secret_version: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:my-rds-secret-w84Jb6|terraform-20250331174913318500000004][0m
+[0m[1maws_secretsmanager_secret_version.jwt_secret_version: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:app-jwt-secret-M4pr6A|terraform-20250331174913324400000006][0m
+[0m[1maws_iam_role_policy.rds_proxy_secrets: Refreshing state... [id=rds-proxy-role:terraform-20250331174913318500000005][0m
+[0m[1maws_internet_gateway.gw: Refreshing state... [id=igw-0fe79c239a3115428][0m
+[0m[1maws_route_table.public_rt: Refreshing state... [id=rtb-04fd423fbdc1a91d5][0m
+[0m[1maws_subnet.private[1]: Refreshing state... [id=subnet-06b547b2902e96bd8][0m
+[0m[1maws_route_table.private_rt: Refreshing state... [id=rtb-07761d1dade3002bd][0m
+[0m[1maws_security_group.rds_proxy_sg: Refreshing state... [id=sg-07328d68fd3a20dac][0m
+[0m[1maws_subnet.public[0]: Refreshing state... [id=subnet-03c8ac9f1975b7d7b][0m
+[0m[1maws_subnet.public[1]: Refreshing state... [id=subnet-030548a9afba25eee][0m
+[0m[1maws_subnet.private[0]: Refreshing state... [id=subnet-07a84858ed4ae4e87][0m
+[0m[1maws_security_group.alb_sg: Refreshing state... [id=sg-0dc9ff8571e1c0a97][0m
+[0m[1maws_route.public_internet_access: Refreshing state... [id=r-rtb-04fd423fbdc1a91d51080289494][0m
+[0m[1maws_iam_role_policy.ecs_elb_registration: Refreshing state... [id=ecs-execution-role:ecs-elb-registration][0m
+[0m[1maws_iam_role_policy.ecs_exec: Refreshing state... [id=ecs-execution-role:ecs-exec-policy][0m
+[0m[1maws_iam_role_policy.ecs_service_policy: Refreshing state... [id=ecs-execution-role:ecs-service-policy][0m
+[0m[1maws_iam_role_policy.ecr_pull: Refreshing state... [id=ecs-execution-role:terraform-20250331201644262300000001][0m
+[0m[1maws_iam_role_policy.ecs_secrets_access: Refreshing state... [id=ecs-execution-role:ecs-secrets-access][0m
+[0m[1maws_ecs_task_definition.frontend: Refreshing state... [id=frontend-task][0m
+[0m[1maws_iam_role_policy_attachment.ecs_execution: Refreshing state... [id=ecs-execution-role-20250331174742148200000004][0m
+[0m[1maws_security_group.rds_sg: Refreshing state... [id=sg-008c5551150e1e295][0m
+[0m[1maws_route_table_association.public_assoc[1]: Refreshing state... [id=rtbassoc-0ac7aab3f0a8a7215][0m
+[0m[1maws_nat_gateway.nat: Refreshing state... [id=nat-0b5631667fafe7772][0m
+[0m[1maws_route_table_association.public_assoc[0]: Refreshing state... [id=rtbassoc-0a19708f7bd850024][0m
+[0m[1maws_security_group.ecs_sg: Refreshing state... [id=sg-08e977673f0f367fb][0m
+[0m[1maws_lb.app_alb: Refreshing state... [id=arn:aws:elasticloadbalancing:eu-west-1:183631301567:loadbalancer/app/app-alb/6f79ff5c7766a1cd][0m
+[0m[1maws_db_subnet_group.rds_subnet_group: Refreshing state... [id=rds-subnet-group][0m
+[0m[1maws_route_table_association.private_assoc[0]: Refreshing state... [id=rtbassoc-07a4f5db10c7eab30][0m
+[0m[1maws_route_table_association.private_assoc[1]: Refreshing state... [id=rtbassoc-0360633469515f334][0m
+[0m[1maws_route.private_nat_access: Refreshing state... [id=r-rtb-07761d1dade3002bd1080289494][0m
+[0m[1maws_security_group_rule.ecs_to_rds_proxy: Refreshing state... [id=sgrule-1646894365][0m
+[0m[1maws_vpc_endpoint.secretsmanager: Refreshing state... [id=vpce-0693caab12fb8e62e][0m
+[0m[1maws_vpc_endpoint.ecr: Refreshing state... [id=vpce-0503bf8e3e210bc1c][0m
+[0m[1maws_vpc_endpoint.ecr_dkr: Refreshing state... [id=vpce-0b60c18ebd5b679c4][0m
+[0m[1maws_db_instance.rds: Refreshing state... [id=db-XKWJENLLZHAUMDE6VJZDCMIPV4][0m
+[0m[1maws_secretsmanager_secret_version.frontend_url_version: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:frontend-url-nFoFRU|terraform-20250401002212848700000001][0m
+[0m[1maws_lb_listener.http: Refreshing state... [id=arn:aws:elasticloadbalancing:eu-west-1:183631301567:listener/app/app-alb/6f79ff5c7766a1cd/7ba8947003e6fa6c][0m
+[0m[1maws_secretsmanager_secret_version.rds_host_version: Refreshing state... [id=arn:aws:secretsmanager:eu-west-1:183631301567:secret:my-rds-secret-w84Jb6|terraform-20250331175735964200000011][0m
+[0m[1maws_db_proxy.rds_proxy: Refreshing state... [id=my-rds-proxy][0m
+[0m[1maws_db_proxy_target.rds_proxy_target: Refreshing state... [id=my-rds-proxy/default/RDS_INSTANCE/my-rds-db][0m
+[0m[1maws_ecs_task_definition.db_migrations: Refreshing state... [id=db-migrations][0m
+[0m[1maws_ecs_task_definition.backend: Refreshing state... [id=backend][0m
+[0m[1maws_lb_target_group.frontend_tg: Refreshing state... [id=arn:aws:elasticloadbalancing:eu-west-1:183631301567:targetgroup/frontend-tg/d2630994df65aa91][0m
+[0m[1maws_lb_target_group.backend_tg: Refreshing state... [id=arn:aws:elasticloadbalancing:eu-west-1:183631301567:targetgroup/backend-tg/d9adda393af192fd][0m
+[0m[1maws_ecs_service.run_migrations: Refreshing state... [id=arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/DB-migrator][0m
+[0m[1maws_lb_listener_rule.backend_rule: Refreshing state... [id=arn:aws:elasticloadbalancing:eu-west-1:183631301567:listener-rule/app/app-alb/6f79ff5c7766a1cd/7ba8947003e6fa6c/8cfe0e93d623351e][0m
+[0m[1maws_lb_listener_rule.frontend_rule: Refreshing state... [id=arn:aws:elasticloadbalancing:eu-west-1:183631301567:listener-rule/app/app-alb/6f79ff5c7766a1cd/7ba8947003e6fa6c/a55b6726e64b7a6a][0m
+[0m[1maws_ecs_service.backend: Refreshing state... [id=arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/backend-service][0m
+[0m[1maws_appautoscaling_target.backend_scale: Refreshing state... [id=service/app-cluster/backend-service][0m
+[0m[1maws_ecs_service.frontend: Refreshing state... [id=arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/frontend-service][0m
+[0m[1maws_appautoscaling_target.frontend_scale: Refreshing state... [id=service/app-cluster/frontend-service][0m
+[0m[1maws_appautoscaling_policy.backend_scale_cpu: Refreshing state... [id=backend-cpu-scaling][0m
+[0m[1maws_appautoscaling_policy.frontend_scale_requests: Refreshing state... [id=frontend-request-scaling][0m
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [33m~[0m update in-place[0m
+[31m-[0m/[32m+[0m destroy and then create replacement[0m
+
+Terraform will perform the following actions:
+
+[1m  # aws_db_proxy.rds_proxy[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_db_proxy" "rds_proxy" {
+        id                     = "my-rds-proxy"
+        name                   = "my-rds-proxy"
+        tags                   = {}
+        [90m# (10 unchanged attributes hidden)[0m[0m
+
+      [31m-[0m[0m auth {
+          [31m-[0m[0m auth_scheme               = "SECRETS" [90m-> null[0m[0m
+          [31m-[0m[0m client_password_auth_type = "MYSQL_CACHING_SHA2_PASSWORD" [90m-> null[0m[0m
+          [31m-[0m[0m description               = "Proxy authentication" [90m-> null[0m[0m
+          [31m-[0m[0m iam_auth                  = "DISABLED" [90m-> null[0m[0m
+          [31m-[0m[0m secret_arn                = "arn:aws:secretsmanager:eu-west-1:183631301567:secret:my-rds-secret-w84Jb6" [90m-> null[0m[0m
+            [90m# (1 unchanged attribute hidden)[0m[0m
+        }
+      [32m+[0m[0m auth {
+          [32m+[0m[0m client_password_auth_type = (known after apply)
+          [32m+[0m[0m description               = "Proxy authentication"
+          [32m+[0m[0m iam_auth                  = "DISABLED"
+          [32m+[0m[0m secret_arn                = "arn:aws:secretsmanager:eu-west-1:183631301567:secret:my-rds-secret-w84Jb6"
+            [90m# (2 unchanged attributes hidden)[0m[0m
+        }
+    }
+
+[1m  # aws_ecs_service.run_migrations[0m will be updated in-place
+[0m  [33m~[0m[0m resource "aws_ecs_service" "run_migrations" {
+        id                                 = "arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/DB-migrator"
+        name                               = "DB-migrator"
+        tags                               = {}
+      [33m~[0m[0m task_definition                    = "arn:aws:ecs:eu-west-1:183631301567:task-definition/db-migrations:7" -> (known after apply)
+        [90m# (16 unchanged attributes hidden)[0m[0m
+
+        [90m# (3 unchanged blocks hidden)[0m[0m
+    }
+
+[1m  # aws_ecs_task_definition.db_migrations[0m must be [1m[31mreplaced[0m
+[0m[31m-[0m/[32m+[0m[0m resource "aws_ecs_task_definition" "db_migrations" {
+      [33m~[0m[0m arn                      = "arn:aws:ecs:eu-west-1:183631301567:task-definition/db-migrations:7" -> (known after apply)
+      [33m~[0m[0m arn_without_revision     = "arn:aws:ecs:eu-west-1:183631301567:task-definition/db-migrations" -> (known after apply)
+      [33m~[0m[0m container_definitions    = jsonencode(
+          [33m~[0m[0m [
+              [33m~[0m[0m {
+                  [33m~[0m[0m command          = [
+                        [90m# (1 unchanged element hidden)[0m[0m
+                        "-c",
+                      [33m~[0m[0m <<-EOT
+                          [31m-[0m[0m echo "Running migrations directly against database..."
+                          [31m-[0m[0m   mysql -h my-rds-proxy.proxy-cpoyweeca228.eu-west-1.rds.amazonaws.com -u$DB_USER -p$DB_PASSWORD $DB_NAME < /var/www/html/migrations/001_create_users_table.sql && \
+                          [31m-[0m[0m   echo "Migrations complete!"
+                          [32m+[0m[0m echo "Running migrations directly against the database..."
+                          [32m+[0m[0m   
+                          [32m+[0m[0m   # Loop through all .sql files in the migrations directory and execute them
+                          [32m+[0m[0m   for sql_file in /var/www/html/migrations/*.sql; do
+                          [32m+[0m[0m     if [ -f "$sql_file" ]; then
+                          [32m+[0m[0m       echo "Running migration: $sql_file"
+                          [32m+[0m[0m       mysql -h my-rds-proxy.proxy-cpoyweeca228.eu-west-1.rds.amazonaws.com -u$DB_USER -p$DB_PASSWORD $DB_NAME < "$sql_file" && \
+                          [32m+[0m[0m       echo "Migration completed: $sql_file"
+                          [32m+[0m[0m     fi
+                          [32m+[0m[0m   done
+                          [32m+[0m[0m   
+                          [32m+[0m[0m   echo "All migrations complete!"
+                        EOT,
+                    ]
+                  [31m-[0m[0m essential        = true
+                  [31m-[0m[0m mountPoints      = []
+                    name             = "migrator"
+                  [31m-[0m[0m portMappings     = []
+                  [31m-[0m[0m systemControls   = []
+                  [31m-[0m[0m volumesFrom      = []
+                    [90m# (4 unchanged attributes hidden)[0m[0m
+                },
+            ] [31m# forces replacement[0m[0m
+        )
+      [33m~[0m[0m enable_fault_injection   = false -> (known after apply)
+      [33m~[0m[0m id                       = "db-migrations" -> (known after apply)
+      [33m~[0m[0m revision                 = 7 -> (known after apply)
+      [31m-[0m[0m tags                     = {} [90m-> null[0m[0m
+      [33m~[0m[0m tags_all                 = {} -> (known after apply)
+        [90m# (11 unchanged attributes hidden)[0m[0m
+    }
+
+[1mPlan:[0m 1 to add, 2 to change, 1 to destroy.
+[0m[0m[1maws_ecs_task_definition.db_migrations: Destroying... [id=db-migrations][0m[0m
+[0m[1maws_ecs_task_definition.db_migrations: Destruction complete after 1s[0m
+[0m[1maws_db_proxy.rds_proxy: Modifying... [id=my-rds-proxy][0m[0m
+[0m[1maws_db_proxy.rds_proxy: Modifications complete after 6s [id=my-rds-proxy][0m
+[0m[1maws_ecs_task_definition.db_migrations: Creating...[0m[0m
+[0m[1maws_ecs_task_definition.db_migrations: Creation complete after 2s [id=db-migrations][0m
+[0m[1maws_ecs_service.run_migrations: Modifying... [id=arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/DB-migrator][0m[0m
+[0m[1maws_ecs_service.run_migrations: Modifications complete after 1s [id=arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/DB-migrator][0m
+[0m[1m[32m
+Apply complete! Resources: 1 added, 2 changed, 1 destroyed.
+[0m[0m[1m[32m
+Outputs:
+
+[0mbackend_health = "http://app-alb-1851802764.eu-west-1.elb.amazonaws.com/api/v1/health"
+frontend_url = "http://app-alb-1851802764.eu-west-1.elb.amazonaws.com"
+migration_status = "arn:aws:ecs:eu-west-1:183631301567:service/app-cluster/DB-migrator"
+rds_secret_arn = <sensitive>
+[DEPLOYMENT] Running database migrations...
+[DEPLOYMENT] Migration task started: 
