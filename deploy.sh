@@ -6,6 +6,10 @@ TERRAFORM_DIR=$(pwd)
 STAGE_PREFIX="[DEPLOYMENT]"
 BACKEND_HEALTH_ENDPOINT="/api/v1/health"
 
+function format_terraform() {
+  echo "$STAGE_PREFIX Formatting Terraform files..."
+  terraform fmt
+}
 function validate_terraform() {
   echo "$STAGE_PREFIX Validating Terraform configuration..."
   terraform validate
@@ -16,33 +20,7 @@ function apply_infrastructure() {
   terraform apply -auto-approve
 }
 
-function run_migrations() {
-  echo "$STAGE_PREFIX Running database migrations..."
-  
-  
-  
-  # Run ECS task for migrations
-  local task_arn=$(aws ecs run-task --cluster app-cluster \
-    --task-definition db-migrations \
-    --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={assignPublicIp=DISABLED}" \
-    --query 'tasks[0].taskArn' --output text)
-  
-  echo "$STAGE_PREFIX Migration task started: $task_arn"
-  
-  # Wait for migration task to complete
-  aws ecs wait tasks-stopped --cluster app-cluster --tasks "$task_arn"
-  echo "$STAGE_PREFIX Migration task completed. Fetching logs..."
-  
-  # Retrieve and display logs
-  local log_stream=$(aws ecs describe-tasks --cluster app-cluster --tasks "$task_arn" \
-    --query 'tasks[0].containers[0].logStreamName' --output text)
-  
-  aws logs get-log-events \
-    --log-group-name "/ecs/prod/backend" \
-    --log-stream-name "$log_stream" \
-    --query 'events[*].message' --output text
-}
+
 
 function verify_backend() {
   local alb_dns=$(terraform output -raw alb_dns_name)
@@ -77,19 +55,22 @@ function verify_frontend() {
   return 1
 }
 
+
 # Main Deployment Flow
+
+format_terraform
+
 validate_terraform
 
 # Phase 1: Apply All Infrastructure
 apply_infrastructure
 
-# Phase 2: Data Layer (Run Migrations)
-run_migrations
 
-# Phase 3: Backend Services Verification
+
+# Phase 2: Backend Services Verification
 verify_backend || exit 1
 
-# Phase 4: Frontend Services Verification
+# Phase 3: Frontend Services Verification
 verify_frontend || exit 1
 
 # Final Apply to Ensure Everything is Synced

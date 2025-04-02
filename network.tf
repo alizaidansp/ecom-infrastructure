@@ -93,3 +93,4 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
 # terraform fmt  # Format the code properly
 # terraform validate  # Validate the Terraform syntax
 # terraform apply  # Apply the changes
+#  terraform destroy -lock=false  
