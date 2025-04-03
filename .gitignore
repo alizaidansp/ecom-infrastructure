@@ -1,3 +1,32 @@
 .qodo
 deployment.log
-.terraform
+# Terraform state files (sensitive)
+*.tfstate
+*.tfstate.backup
+terraform.tfstate
+terraform.tfstate.backup
+
+# Terraform crash log files
+crash.log
+*.log
+
+# Ignore override files (local configurations)
+.override.tf
+.override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore plan output files
+*.tfplan
+
+# Ignore Terraform module and provider caches
+.terraform/
+.terraform.lock.hcl
+
+# Ignore SSH key files (if generated for deployment)
+*.pem
+*.key
+
+# Ignore environment-specific variables
+terraform.tfvars
+terraform.tfvars.json
