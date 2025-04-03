@@ -1,4 +1,3 @@
-Here's the updated README with a Table of Contents added at the beginning:
 
 ---
 
@@ -125,30 +124,6 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-### Expected Output
-```text
-Initializing Terraform...
-Terraform initialized successfully!
-
-Planning infrastructure...
-+ aws_vpc.main
-+ aws_subnet.public[0]
-+ aws_subnet.public[1]
-...
-
-Applying configuration...
-aws_lb.app_alb: Creating...
-aws_db_instance.rds: Still creating... [1m elapsed]
-aws_ecs_service.frontend: Creation complete after 2m41s
-
-Apply complete! Resources: 23 added, 0 changed, 0 destroyed.
-
-Outputs:
-frontend_url = "http://app-alb-123456789.eu-west-1.elb.amazonaws.com"
-backend_health = "http://app-alb-123456789.eu-west-1.elb.amazonaws.com/api/v1/health"
-```
-
----
 
 **deploy.sh** contents:
 ```bash
