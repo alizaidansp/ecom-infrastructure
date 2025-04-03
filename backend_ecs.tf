@@ -11,7 +11,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([{
     name      = "backend"
-    image = "183631301567.dkr.ecr.eu-west-1.amazonaws.com/lamp-backend:latest"
+    image     = "183631301567.dkr.ecr.eu-west-1.amazonaws.com/lamp-backend:latest"
     essential = true
     environment = [
       { name = "DB_HOST", value = aws_db_proxy.rds_proxy.endpoint },
@@ -116,7 +116,7 @@ resource "aws_ecs_service" "backend" {
   health_check_grace_period_seconds = 60
 
 
-  
+
 
   # Enable Container Insights
   tags = {

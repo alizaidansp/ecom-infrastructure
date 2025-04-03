@@ -66,6 +66,10 @@ resource "aws_route_table_association" "private_assoc" {
   route_table_id = aws_route_table.private_rt.id
 }
 
+
+#  Creating private ENIs (Elastic Network Interfaces) in
+#  My VPC's private subnets that allow your resources(SM,ECR,ECR_DKR) to securely access AWS services
+#  without going through the public internet.
 resource "aws_vpc_endpoint" "secretsmanager" {
   vpc_id             = aws_vpc.main.id
   service_name       = "com.amazonaws.${var.region}.secretsmanager"
@@ -82,7 +86,6 @@ resource "aws_vpc_endpoint" "ecr" {
   subnet_ids         = aws_subnet.private[*].id # Use [*] to get all subnet IDs
 }
 
-# Add to network.tf if missing
 resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_id             = aws_vpc.main.id
   service_name       = "com.amazonaws.eu-west-1.ecr.dkr"

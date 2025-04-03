@@ -10,10 +10,10 @@ resource "aws_ecs_task_definition" "db_migrations" {
   container_definitions = jsonencode([{
     name  = "migrator",
     image = "183631301567.dkr.ecr.eu-west-1.amazonaws.com/lamp-backend:latest"
-command = [
-  "sh",
-  "-c",
-  <<EOF
+    command = [
+      "sh",
+      "-c",
+      <<EOF
   echo "Running migrations directly against the database..."
   
   # Loop through all .sql files in the migrations directory and execute them
@@ -27,12 +27,12 @@ command = [
   
   echo "All migrations complete!"
   EOF
-]
+    ]
 
 
 
     environment = [
-    
+
     ],
     secrets = [
       { name = "DB_USER", valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:username::" },
@@ -42,7 +42,7 @@ command = [
         valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:db_name::"
       },
     ]
-     logConfiguration = {
+    logConfiguration = {
       # application level logs
       logDriver = "awslogs",
       options = {

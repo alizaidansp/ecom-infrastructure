@@ -9,40 +9,40 @@ resource "aws_lb" "app_alb" {
 
 # target groups, routing alb to specific targets(example ecs tasks)
 resource "aws_lb_target_group" "frontend_tg" {
-  depends_on = [aws_lb_listener.http]
-  name     = "frontend-tg"
-  port     = 3000
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
-  target_type = "ip" 
+  depends_on  = [aws_lb_listener.http]
+  name        = "frontend-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
 
   health_check {
-    path                = "/" # The endpoint the ALB uses to check if the target is healthy ("/" = root of the app).
-    interval            = 30  # Time (in seconds) between each health check (default is 30s).
-    timeout             = 5   # Time (in seconds) before marking the health check as failed if no response is received.
-    healthy_threshold   = 2   # Number of consecutive successful health checks before considering the target healthy.
-    unhealthy_threshold = 3   # Number of consecutive failed health checks before considering the target unhealthy.
-    matcher = "200-299" # Accept any 2xx status
+    path                = "/"       # The endpoint the ALB uses to check if the target is healthy ("/" = root of the app).
+    interval            = 30        # Time (in seconds) between each health check (default is 30s).
+    timeout             = 5         # Time (in seconds) before marking the health check as failed if no response is received.
+    healthy_threshold   = 2         # Number of consecutive successful health checks before considering the target healthy.
+    unhealthy_threshold = 3         # Number of consecutive failed health checks before considering the target unhealthy.
+    matcher             = "200-299" # Accept any 2xx status
   }
 
 }
 
 resource "aws_lb_target_group" "backend_tg" {
-  depends_on = [aws_lb_listener.http]
-  name     = "backend-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
-  target_type = "ip" 
+  depends_on  = [aws_lb_listener.http]
+  name        = "backend-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
 
 
   health_check {
     path                = "/api/v1/health"
-    interval            = 30 # Time (in seconds) between each health check (default is 30s).
-    timeout             = 5  # Time (in seconds) before marking the health check as failed if no response is received.
-    healthy_threshold   = 2  # Number of consecutive successful health checks before considering the target healthy.
-    unhealthy_threshold = 3  # Number of consecutive failed health checks before considering the target unhealthy.
-    matcher = "200-299" # Accept any 2xx status
+    interval            = 30        # Time (in seconds) between each health check (default is 30s).
+    timeout             = 5         # Time (in seconds) before marking the health check as failed if no response is received.
+    healthy_threshold   = 2         # Number of consecutive successful health checks before considering the target healthy.
+    unhealthy_threshold = 3         # Number of consecutive failed health checks before considering the target unhealthy.
+    matcher             = "200-299" # Accept any 2xx status
   }
 }
 

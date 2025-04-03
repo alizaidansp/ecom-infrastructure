@@ -10,6 +10,11 @@ function format_terraform() {
   echo "$STAGE_PREFIX Formatting Terraform files..."
   terraform fmt
 }
+
+function plan_terraform() {
+  echo "$STAGE_PREFIX These are the changes that will be applied to your infrastructure..."
+  terraform plan
+}
 function validate_terraform() {
   echo "$STAGE_PREFIX Validating Terraform configuration..."
   terraform validate
@@ -59,6 +64,8 @@ function verify_frontend() {
 # Main Deployment Flow
 
 format_terraform
+
+plan_terraform
 
 validate_terraform
 

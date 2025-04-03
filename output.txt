@@ -1008,3 +1008,1013 @@ variable "environment" {
 }
 
 
+===== alb.tf =====
+resource "aws_lb" "app_alb" {
+  name               = "app-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = aws_subnet.public[*].id # Use [*] to get all subnet IDs
+}
+
+
+# target groups, routing alb to specific targets(example ecs tasks)
+resource "aws_lb_target_group" "frontend_tg" {
+  depends_on = [aws_lb_listener.http]
+  name     = "frontend-tg"
+  port     = 3000
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+  target_type = "ip" 
+
+  health_check {
+    path                = "/" # The endpoint the ALB uses to check if the target is healthy ("/" = root of the app).
+    interval            = 30  # Time (in seconds) between each health check (default is 30s).
+    timeout             = 5   # Time (in seconds) before marking the health check as failed if no response is received.
+    healthy_threshold   = 2   # Number of consecutive successful health checks before considering the target healthy.
+    unhealthy_threshold = 3   # Number of consecutive failed health checks before considering the target unhealthy.
+    matcher = "200-299" # Accept any 2xx status
+  }
+
+}
+
+resource "aws_lb_target_group" "backend_tg" {
+  depends_on = [aws_lb_listener.http]
+  name     = "backend-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+  target_type = "ip" 
+
+
+  health_check {
+    path                = "/api/v1/health"
+    interval            = 30 # Time (in seconds) between each health check (default is 30s).
+    timeout             = 5  # Time (in seconds) before marking the health check as failed if no response is received.
+    healthy_threshold   = 2  # Number of consecutive successful health checks before considering the target healthy.
+    unhealthy_threshold = 3  # Number of consecutive failed health checks before considering the target unhealthy.
+    matcher = "200-299" # Accept any 2xx status
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.app_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  # so if the listener doesnt get a valid path "/" or "/api/v1/health" from  healthchecks in  the respective target groups
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Not Found"
+      status_code  = "404"
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "backend_rule" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 100
+  # Priority in AWS ALB Listener Rules determines the 
+  # order in which rules are evaluated.
+
+  condition {
+    path_pattern {
+      values = ["/api*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend_tg.arn
+  }
+}
+
+resource "aws_lb_listener_rule" "frontend_rule" {
+  listener_arn = aws_lb_listener.http.arn
+
+
+  priority = 200
+
+  condition {
+    path_pattern {
+      values = ["/*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend_tg.arn
+  }
+}
+
+
+
+===== auto_scaling.tf =====
+# Backend Scaling (CPU/Memory focused)
+resource "aws_appautoscaling_target" "backend_scale" {
+  max_capacity       = 6 # More conservative
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "backend_scale_cpu" {
+  name               = "backend-cpu-scaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend_scale.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend_scale.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend_scale.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 60  # Lower threshold for stability
+    scale_in_cooldown  = 300 # Wait 5 mins before scaling in
+    scale_out_cooldown = 120 # Wait 2 mins before scaling out
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+  }
+}
+
+# Frontend Scaling (Request-count focused)
+resource "aws_appautoscaling_target" "frontend_scale" {
+  max_capacity       = 10 # Can scale more aggressively
+  min_capacity       = 2
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.frontend.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "frontend_scale_requests" {
+  name               = "frontend-request-scaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.frontend_scale.resource_id
+  scalable_dimension = aws_appautoscaling_target.frontend_scale.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.frontend_scale.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value       = 500 # Target 500 requests per container
+    scale_in_cooldown  = 180
+    scale_out_cooldown = 60 # Scale out faster during traffic spikes
+
+    predefined_metric_specification {
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      resource_label         = "${aws_lb.app_alb.arn_suffix}/${aws_lb_target_group.frontend_tg.arn_suffix}"
+    }
+  }
+}
+===== backend_ecs.tf =====
+
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "backend"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_execution_role.arn
+
+
+  container_definitions = jsonencode([{
+    name      = "backend"
+    image = "183631301567.dkr.ecr.eu-west-1.amazonaws.com/lamp-backend:latest"
+    essential = true
+    environment = [
+      { name = "DB_HOST", value = aws_db_proxy.rds_proxy.endpoint },
+      # { name = "ALB_DNS", value = "${aws_lb.app_alb.dns_name}" } # ✅ Pass ALB DNS dynamically
+
+    ],
+    secrets = [
+      {
+        name      = "DB_USER",
+        valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:username::"
+      },
+      {
+        name      = "DB_PASSWORD",
+        valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:password::"
+      },
+      {
+        name      = "DB_NAME",
+        valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:db_name::"
+      },
+      {
+        name      = "JWT_SECRET",
+        valueFrom = "${aws_secretsmanager_secret.jwt_secret.arn}:jwt_secret::"
+      },
+      {
+        name      = "FRONTEND_URL",
+        valueFrom = "${aws_secretsmanager_secret.frontend_url.arn}:frontend_url::"
+      }
+    ],
+
+    logConfiguration = {
+      # application level logs
+      logDriver = "awslogs",
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.backend_logs.name,
+        "awslogs-region"        = var.region,
+        "awslogs-stream-prefix" = "backend",
+        "awslogs-create-group"  = "true"
+      }
+    }
+    portMappings = [{
+      containerPort = 80
+      hostPort      = 80
+    }],
+
+    healthCheck = {
+      command = [
+        "CMD-SHELL",
+        "curl -f http://localhost:80/api/v1/health || exit 1"
+      ],
+      interval    = 10, # More frequent than ALB
+      timeout     = 5,
+      retries     = 3,
+      startPeriod = 30 # Give container time to start
+    }
+
+  }])
+}
+
+
+
+resource "aws_ecs_service" "backend" {
+  name            = "backend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = aws_subnet.private[*].id # Instead of [aws_subnet.private.id]
+    security_groups  = [aws_security_group.ecs_sg.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend_tg.arn
+    container_name   = "backend"
+    container_port   = 80
+  }
+
+  # Ensure migrations run first
+  depends_on = [
+    aws_db_proxy.rds_proxy,
+    aws_lb_target_group.backend_tg,
+    aws_lb_listener_rule.backend_rule,
+    aws_ecs_service.run_migrations, # Wait for migrations
+
+  ]
+
+  enable_execute_command = true
+  # 
+  # Added deployment circuit breaker for rollback of failed deployments without intervention
+  deployment_controller {
+    type = "ECS"
+  }
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  # Health check grace period (for slow starters)
+  health_check_grace_period_seconds = 60
+
+
+  
+
+  # Enable Container Insights
+  tags = {
+    "ecs:enable-container-insights" = "true"
+  }
+
+
+}
+===== db_migration.tf =====
+resource "aws_ecs_task_definition" "db_migrations" {
+  family                   = "db-migrations"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_execution_role.arn
+
+  container_definitions = jsonencode([{
+    name  = "migrator",
+    image = "183631301567.dkr.ecr.eu-west-1.amazonaws.com/lamp-backend:latest"
+command = [
+  "sh",
+  "-c",
+  <<EOF
+  echo "Running migrations directly against the database..."
+  
+  # Loop through all .sql files in the migrations directory and execute them
+  for sql_file in /var/www/html/migrations/*.sql; do
+    if [ -f "$sql_file" ]; then
+      echo "Running migration: $sql_file"
+      mysql -h ${aws_db_proxy.rds_proxy.endpoint} -u$DB_USER -p$DB_PASSWORD $DB_NAME < "$sql_file" && \
+      echo "Migration completed: $sql_file"
+    fi
+  done
+  
+  echo "All migrations complete!"
+  EOF
+]
+
+
+
+    environment = [
+    
+    ],
+    secrets = [
+      { name = "DB_USER", valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:username::" },
+      { name = "DB_PASSWORD", valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:password::" },
+      {
+        name      = "DB_NAME",
+        valueFrom = "${aws_secretsmanager_secret.rds_secret.arn}:db_name::"
+      },
+    ]
+     logConfiguration = {
+      # application level logs
+      logDriver = "awslogs",
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.backend_logs.name,
+        "awslogs-region"        = var.region,
+        "awslogs-stream-prefix" = "db",
+        "awslogs-create-group"  = "true"
+      }
+    }
+  }])
+}
+
+resource "aws_ecs_service" "run_migrations" {
+  name            = "DB-migrator"
+  cluster         = aws_ecs_cluster.main.name
+  task_definition = aws_ecs_task_definition.db_migrations.arn
+  launch_type     = "FARGATE"
+  desired_count   = 1
+
+  network_configuration {
+    subnets         = aws_subnet.private[*].id
+    security_groups = [aws_security_group.ecs_sg.id]
+  }
+
+  depends_on = [
+    aws_db_proxy.rds_proxy,
+  ]
+  enable_execute_command = true
+
+}
+
+# Add output to verify migrations
+output "migration_status" {
+  value = aws_ecs_service.run_migrations.id
+}
+===== ecs.tf =====
+resource "aws_ecs_cluster" "main" {
+  name = "app-cluster"
+}
+
+resource "aws_cloudwatch_log_group" "ecs_logs" {
+  name              = "/ecs/app"
+  retention_in_days = 7
+}
+===== frontend_ecs.tf =====
+
+#  fix logs and vital env var
+resource "aws_ecs_task_definition" "frontend" {
+  family                   = "frontend-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_execution_role.arn
+
+  container_definitions = jsonencode([{
+    name  = "frontend"
+    image = "183631301567.dkr.ecr.eu-west-1.amazonaws.com/lamp-frontend:latest", # Full ECR URI
+    portMappings = [{
+      containerPort = 3000
+      hostPort      = 3000
+    }]
+
+    healthCheck = {
+      command = [
+        "CMD-SHELL",
+        "curl -f http://localhost:3000 || exit 1"
+      ],
+      interval    = 15, # More frequent than ALB's 30s
+      timeout     = 5,
+      retries     = 3,
+      startPeriod = 30 # Startup grace period
+    },
+
+    secrets = [
+      {
+        name      = "VITE_API_URL",
+        valueFrom = "${aws_secretsmanager_secret.frontend_url.arn}:frontend_url::"
+      }
+    ],
+    logConfiguration = {
+      # application-level logs
+      logDriver = "awslogs",
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.frontend_logs.name,
+        "awslogs-region"        = var.region,
+        "awslogs-stream-prefix" = "frontend",
+        "awslogs-create-group"  = "true"
+      }
+    }
+  }])
+}
+
+resource "aws_ecs_service" "frontend" {
+  name            = "frontend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.frontend.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = aws_subnet.private[*].id # Instead of [aws_subnet.private.id]
+    security_groups  = [aws_security_group.ecs_sg.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend_tg.arn
+    container_name   = "frontend"
+    container_port   = 3000
+  }
+
+  depends_on = [
+    aws_lb_target_group.frontend_tg,
+    aws_lb_listener_rule.frontend_rule,
+    aws_ecs_service.backend,
+    aws_db_proxy.rds_proxy
+  ]
+
+  enable_execute_command = true
+
+  # Added deployment circuit breaker for rollback of failed deployments without intervention
+  deployment_controller {
+    type = "ECS"
+  }
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  # Health check grace period (for slow starters)
+  health_check_grace_period_seconds = 60
+
+
+
+
+  # Enable Container Insights
+  tags = {
+    "ecs:enable-container-insights" = "true"
+  }
+
+
+
+}
+===== iam.tf =====
+# ECS Task Execution Role (for both frontend/backend)
+resource "aws_iam_role" "ecs_execution_role" {
+  name = "ecs-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+resource "aws_iam_role_policy" "ecs_service_policy" {
+  name = "ecs-service-policy"
+  role = aws_iam_role.ecs_execution_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = [
+          "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+          "elasticloadbalancing:DeregisterTargets",
+          "elasticloadbalancing:Describe*",
+          "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+          "elasticloadbalancing:RegisterTargets",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetHealth",
+        ],
+        Effect   = "Allow",
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_exec" {
+  name = "ecs-exec-policy"
+  role = aws_iam_role.ecs_execution_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ],
+      Effect   = "Allow",
+      Resource = "*"
+    }]
+  })
+}
+
+# RDS Proxy Role
+resource "aws_iam_role" "rds_proxy_role" {
+  name = "rds-proxy-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = { Service = "rds.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "rds_proxy_secrets" {
+  role = aws_iam_role.rds_proxy_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action   = ["secretsmanager:GetSecretValue"],
+      Effect   = "Allow",
+      Resource = aws_secretsmanager_secret.rds_secret.arn
+    }]
+  })
+}
+
+
+resource "aws_iam_role_policy" "ecs_elb_registration" {
+  name = "ecs-elb-registration"
+  role = aws_iam_role.ecs_execution_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Action = [
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:DescribeTargetGroups"
+      ],
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_secrets_access" {
+  name = "ecs-secrets-access"
+  role = aws_iam_role.ecs_execution_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ],
+        Effect   = "Allow",
+        Resource = [
+          aws_secretsmanager_secret.rds_secret.arn,
+          aws_secretsmanager_secret.jwt_secret.arn,
+          aws_secretsmanager_secret.frontend_url.arn
+        ]
+      },
+      {
+        Action = [
+          "kms:Decrypt" # Only needed if using CMK encryption
+        ],
+        Effect   = "Allow",
+        Resource = ["*"] # Restrict to your KMS key ARN if possible
+      }
+    ]
+  })
+}
+
+
+resource "aws_iam_role_policy" "ecr_pull" {
+  role   = aws_iam_role.ecs_execution_role.name
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = [
+        "ecr:GetAuthorizationToken",  # Required for all ECR operations
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability"
+      ],
+      Effect   = "Allow",
+      Resource = "*"
+    }]
+  })
+}
+===== logging.tf =====
+# Service-specific log groups with dynamic naming
+resource "aws_cloudwatch_log_group" "backend_logs" {
+  name              = "/ecs/${var.environment}/backend"
+  retention_in_days = var.log_retention_days
+  tags = {
+    Service     = "backend"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_log_group" "frontend_logs" {
+  name              = "/ecs/${var.environment}/frontend"
+  retention_in_days = var.log_retention_days
+  tags = {
+    Service     = "frontend"
+    Environment = var.environment
+  }
+}
+===== main.tf =====
+
+provider "aws" {
+  profile = "default"
+  region  = var.region
+}
+
+
+===== network.tf =====
+
+# for file in *.tf; do echo "===== $file =====" >> output.txt; cat "$file" >> output.txt; echo "" >> output.txt; done
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16" # This VPC has 65,536 IPs (10.0.0.0 - 10.0.255.255)
+}
+
+# Convert single subnets to multiple AZs
+resource "aws_subnet" "public" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone = "${var.region}${count.index == 0 ? "a" : "b"}"
+  #   Parent CIDR: aws_vpc.main.cidr_block (your VPC's CIDR block, e.g., 10.0.0.0/16)
+  # New Bits: 8 (number of additional bits to add to the prefix)
+  # Subnet Number: count.index (0-based index of the subnet in the list)
+}
+
+resource "aws_subnet" "private" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 2)
+  availability_zone = "${var.region}${count.index == 0 ? "a" : "b"}"
+}
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route" "public_internet_access" {
+  route_table_id         = aws_route_table.public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.gw.id
+}
+
+resource "aws_route_table_association" "public_assoc" {
+  count          = length(aws_subnet.public)
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+resource "aws_eip" "nat" {}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id # Use the first public subnet
+}
+
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_route" "private_nat_access" {
+  route_table_id         = aws_route_table.private_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat.id
+}
+
+resource "aws_route_table_association" "private_assoc" {
+  count          = length(aws_subnet.private)
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+resource "aws_vpc_endpoint" "secretsmanager" {
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.region}.secretsmanager"
+  vpc_endpoint_type  = "Interface"
+  security_group_ids = [aws_security_group.ecs_sg.id]
+  subnet_ids         = aws_subnet.private[*].id # Use [*] to get all subnet IDs
+}
+
+resource "aws_vpc_endpoint" "ecr" {
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.region}.ecr.dkr"
+  vpc_endpoint_type  = "Interface"
+  security_group_ids = [aws_security_group.ecs_sg.id]
+  subnet_ids         = aws_subnet.private[*].id # Use [*] to get all subnet IDs
+}
+
+# Add to network.tf if missing
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.eu-west-1.ecr.dkr"
+  vpc_endpoint_type  = "Interface"
+  security_group_ids = [aws_security_group.ecs_sg.id]
+  subnet_ids         = aws_subnet.private[*].id
+}
+# terraform fmt  # Format the code properly
+# terraform validate  # Validate the Terraform syntax
+# terraform apply  # Apply the changes
+#  terraform destroy -lock=false  
+===== output.tf =====
+# outputs.tf
+output "frontend_url" {
+  value = "http://${aws_lb.app_alb.dns_name}"
+}
+
+output "backend_health" {
+  value = "http://${aws_lb.app_alb.dns_name}/api/v1/health"
+}
+===== rds.tf =====
+# RDS Database Instance (Private Subnet)
+resource "aws_db_instance" "rds" {
+  identifier             = "my-rds-db"
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  instance_class         = "db.t3.micro"
+  allocated_storage      = 20
+  db_name                = "mydatabase"
+  parameter_group_name   = "default.mysql8.0"
+  skip_final_snapshot    = true
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.name
+
+  # backup config
+  backup_retention_period = 7 # Days
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "sun:04:00-sun:05:00"
+
+  username = jsondecode(aws_secretsmanager_secret_version.rds_secret_version.secret_string)["username"]
+  password = jsondecode(aws_secretsmanager_secret_version.rds_secret_version.secret_string)["password"]
+}
+
+
+# RDS Subnet Group - Uses Private Subnet
+resource "aws_db_subnet_group" "rds_subnet_group" {
+  name       = "rds-subnet-group"
+  subnet_ids = aws_subnet.private[*].id # Use [*] to get all subnet IDs
+}
+
+# RDS Proxy - Sits Between Backend ECS & RDS
+resource "aws_db_proxy" "rds_proxy" {
+  name                   = "my-rds-proxy"
+  role_arn               = aws_iam_role.rds_proxy_role.arn
+  engine_family          = "MYSQL"
+  vpc_subnet_ids         = aws_subnet.private[*].id
+  vpc_security_group_ids = [aws_security_group.rds_proxy_sg.id]
+
+  auth {
+    description = "Proxy authentication"
+    iam_auth    = "DISABLED"
+    secret_arn  = aws_secretsmanager_secret.rds_secret.arn
+  }
+
+  depends_on = [
+    aws_secretsmanager_secret_version.rds_secret_version,
+    aws_db_instance.rds
+  ]
+}
+
+
+resource "aws_db_proxy_target" "rds_proxy_target" {
+  db_proxy_name          = aws_db_proxy.rds_proxy.name
+  target_group_name      = "default"
+  db_instance_identifier = aws_db_instance.rds.identifier
+}
+
+===== secrets.tf =====
+
+# DB Secret
+resource "random_password" "db_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "aws_secretsmanager_secret" "rds_secret" {
+  name                    = "my-rds-secret"
+  description             = "Credentials for RDS database"
+  recovery_window_in_days = 0 # Set to 0 for immediate deletion, or 7-30 for retention
+
+}
+
+resource "aws_secretsmanager_secret_version" "rds_secret_version" {
+  secret_id = aws_secretsmanager_secret.rds_secret.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.db_password.result # Using the generated password
+    db_name  = "mydatabase"
+  })
+
+}
+# Then create a separate secret for the host,after instance is up
+resource "aws_secretsmanager_secret_version" "rds_host_version" {
+  secret_id = aws_secretsmanager_secret.rds_secret.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.db_password.result
+    db_name  = "mydatabase"
+    host     = aws_db_instance.rds.address
+  })
+
+  depends_on = [aws_db_instance.rds]
+}
+
+# Output the secret ARN for reference
+output "rds_secret_arn" {
+  value       = aws_secretsmanager_secret.rds_secret.arn
+  description = "ARN of the RDS secret in AWS Secrets Manager"
+  sensitive   = true
+}
+
+
+
+
+# JWT Secret
+resource "aws_secretsmanager_secret" "jwt_secret" {
+  name = "app-jwt-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "jwt_secret_version" {
+  secret_id = aws_secretsmanager_secret.jwt_secret.id
+  secret_string = jsonencode({
+    jwt_secret = random_password.jwt.result
+  })
+}
+
+resource "random_password" "jwt" {
+  length  = 64
+  special = false
+}
+
+
+# Frontend URL Secret (for backend service)
+resource "aws_secretsmanager_secret" "frontend_url" {
+  name = "frontend-url"
+}
+
+resource "aws_secretsmanager_secret_version" "frontend_url_version" {
+  secret_id = aws_secretsmanager_secret.frontend_url.id
+  secret_string = jsonencode({
+    frontend_url = "http://${aws_lb.app_alb.dns_name}/api/v1"
+  })
+}
+===== security_groups.tf =====
+# Security Group for ALB - Allows inbound HTTP traffic from the internet
+resource "aws_security_group" "alb_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"         # Allow HTTP traffic
+    cidr_blocks = ["0.0.0.0/0"] # Open to all (can be restricted)
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1" # Allow all outbound traffic
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Security Group for ECS Tasks (Frontend + Backend)
+# First, create both security groups without the circular references
+resource "aws_security_group" "ecs_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  ingress {
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"] # Allow all outbound traffic
+  }
+}
+
+resource "aws_security_group" "rds_proxy_sg" {
+  vpc_id = aws_vpc.main.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Then add the rules that reference other security groups
+resource "aws_security_group_rule" "ecs_to_rds_proxy" {
+  security_group_id        = aws_security_group.rds_proxy_sg.id
+  type                     = "ingress"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ecs_sg.id
+}
+
+# Security Group for RDS Instance (Allows only RDS Proxy)
+resource "aws_security_group" "rds_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.rds_proxy_sg.id] # Allow only RDS Proxy
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+===== variables.tf =====
+variable "region" {
+  default = "eu-west-1"
+}
+
+variable "app_name" {
+  default = "my-app"
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention period in days"
+  type        = number
+  default     = 7 # Recommended values: 7 (dev), 30 (staging), 90 (production)
+}
+
+variable "environment" {
+  description = "Deployment environment (prod)"
+  type        = string
+  default     = "prod"
+}
+
+

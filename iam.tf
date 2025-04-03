@@ -117,7 +117,7 @@ resource "aws_iam_role_policy" "ecs_secrets_access" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ],
-        Effect   = "Allow",
+        Effect = "Allow",
         Resource = [
           aws_secretsmanager_secret.rds_secret.arn,
           aws_secretsmanager_secret.jwt_secret.arn,
@@ -137,12 +137,12 @@ resource "aws_iam_role_policy" "ecs_secrets_access" {
 
 
 resource "aws_iam_role_policy" "ecr_pull" {
-  role   = aws_iam_role.ecs_execution_role.name
+  role = aws_iam_role.ecs_execution_role.name
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Action = [
-        "ecr:GetAuthorizationToken",  # Required for all ECR operations
+        "ecr:GetAuthorizationToken", # Required for all ECR operations
         "ecr:GetDownloadUrlForLayer",
         "ecr:BatchGetImage",
         "ecr:BatchCheckLayerAvailability"
