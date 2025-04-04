@@ -8,7 +8,7 @@ resource "aws_appautoscaling_target" "backend_scale" {
 }
 
 resource "aws_appautoscaling_policy" "backend_scale_cpu" {
-  name               = "backend-cpu-scaling"
+  name               = "cpu-scale-${aws_ecs_service.backend.name}-${var.environment}" # e.g. "cpu-scale-backend-service-prod"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.backend_scale.resource_id
   scalable_dimension = aws_appautoscaling_target.backend_scale.scalable_dimension
@@ -35,7 +35,7 @@ resource "aws_appautoscaling_target" "frontend_scale" {
 }
 
 resource "aws_appautoscaling_policy" "frontend_scale_requests" {
-  name               = "frontend-request-scaling"
+  name               = "req-scale-${aws_ecs_service.frontend.name}-${var.environment}" # e.g. "req-scale-frontend-service-prod"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.frontend_scale.resource_id
   scalable_dimension = aws_appautoscaling_target.frontend_scale.scalable_dimension

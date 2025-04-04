@@ -7,7 +7,7 @@ resource "random_password" "db_password" {
 }
 
 resource "aws_secretsmanager_secret" "rds_secret" {
-  name                    = "my-rds-secret"
+  name                    = "my-rdsSecret"
   description             = "Credentials for RDS database"
   recovery_window_in_days = 0 # Set to 0 for immediate deletion, or 7-30 for retention
 
@@ -47,7 +47,7 @@ output "rds_secret_arn" {
 
 # JWT Secret
 resource "aws_secretsmanager_secret" "jwt_secret" {
-  name = "app-jwt-secret"
+  name = "app-jwtSecret"
 }
 
 resource "aws_secretsmanager_secret_version" "jwt_secret_version" {
@@ -65,7 +65,7 @@ resource "random_password" "jwt" {
 
 # Frontend URL Secret (for backend service)
 resource "aws_secretsmanager_secret" "frontend_url" {
-  name = "frontend-url"
+  name = "frontendUrl"
 }
 
 resource "aws_secretsmanager_secret_version" "frontend_url_version" {

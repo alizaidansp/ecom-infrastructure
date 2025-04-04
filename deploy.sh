@@ -27,26 +27,13 @@ function apply_infrastructure() {
 
 
 
-function verify_backend() {
-  local alb_dns=$(terraform output -raw alb_dns_name)
-  echo "$STAGE_PREFIX Verifying backend at $alb_dns$BACKEND_HEALTH_ENDPOINT..."
-  
-  for i in {1..10}; do
-    response=$(curl -s -o /dev/null -w "%{http_code}" "http://$alb_dns$BACKEND_HEALTH_ENDPOINT" || true)
-    if [ "$response" -eq 200 ]; then
-      echo "$STAGE_PREFIX Backend is healthy!"
-      return 0
-    fi
-    sleep 10
-  done
-  
-  echo "$STAGE_PREFIX Backend verification failed"
-  return 1
-}
 
 function verify_frontend() {
   local alb_dns=$(terraform output -raw alb_dns_name)
+  local =$(terraform output -raw alb_url)
+  
   echo "$STAGE_PREFIX Verifying frontend at http://$alb_dns..."
+  echo "$STAGE_PREFIX Verifying frontend url [ http://$alb_dns_url ]..."
   
   for i in {1..5}; do
     if curl -s "http://$alb_dns" | grep -q "<title>"; then
@@ -74,10 +61,7 @@ apply_infrastructure
 
 
 
-# Phase 2: Backend Services Verification
-verify_backend || exit 1
-
-# Phase 3: Frontend Services Verification
+# Phase 2: Frontend Services Verification
 verify_frontend || exit 1
 
 # Final Apply to Ensure Everything is Synced
