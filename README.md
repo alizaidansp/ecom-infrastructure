@@ -35,8 +35,8 @@ This project deploys a containerized 3 tier-application (frontend + backend+ dat
 
 
 ## Source Code Repositories
-- **Frontend Application**: [ecom-frontend](https://github.com/alizaidansp/ecom-frontend) (`main` branch) ![Last Commit](https://img.shields.io/github/last-commit/alizaidansp/ecom-frontend?style=flat-square)
-- **Backend API**: [ecom-backend](https://github.com/alizaidansp/ecom-backend) (`main` branch) ![Last Commit](https://img.shields.io/github/last-commit/alizaidansp/ecom-backend?style=flat-square)
+- **Frontend Application**: [ecom-frontend](https://github.com/alizaidansp/ecom-frontend) (`main` branch)
+- **Backend API**: [ecom-backend](https://github.com/alizaidansp/ecom-backend) (`main` branch) 
 - **Infrastructure**: [ecom-infrastructure](https://github.com/alizaidansp/ecom-infrastructure/) (`main` branch) ![Last Commit](https://img.shields.io/github/last-commit/alizaidansp/ecom-infrastructure?style=flat-square)
 
 ## Architectural Components  
@@ -143,7 +143,6 @@ set -eo pipefail
 # Initialize
 TERRAFORM_DIR=$(pwd)
 STAGE_PREFIX="[DEPLOYMENT]"
-BACKEND_HEALTH_ENDPOINT="/api/v1/health"
 
 function format_terraform() {
   echo "$STAGE_PREFIX Formatting Terraform files..."
@@ -243,7 +242,7 @@ No changes. Infrastructure is up-to-date.
 
 Outputs:
 frontend_url = "http://app-alb-123456789.eu-west-1.elb.amazonaws.com"
-backend_health = "http://app-alb-123456789.eu-west-1.elb.amazonaws.com/api/v1/health"
+
 ```
 
 ## Post-Deployment Verification
@@ -254,18 +253,7 @@ backend_health = "http://app-alb-123456789.eu-west-1.elb.amazonaws.com/api/v1/he
    #frontend_url in output.tf
    ```
 
-2. **Health Checks**
-   ```bash
-   curl $(terraform output -raw backend_health) #backend_health in output.tf
-   ```
-
-3. **Log Inspection**
-   ```bash
-   aws logs tail /ecs/prod/backend --follow
-   aws logs tail /ecs/prod/frontend --follow
-   ```
-
-4. **Scaling Verification**
+2. **Scaling Verification**
    ```bash
    aws application-autoscaling describe-scaling-activities \
      --service-namespace ecs
