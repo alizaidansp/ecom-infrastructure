@@ -24,8 +24,6 @@
 ## Overview  
 This project deploys a containerized 3 tier-application (frontend + backend+ database) on AWS ECS Fargate with an Application Load Balancer (ALB), MySQL RDS database, RDS Proxy, and auto-scaling capabilities. The infrastructure is fully defined using Terraform.
 
-![Architecture Diagram](https://i.imgur.com/4Z6wv9Q.png)  
-*(Replace with actual architecture diagram URL)*
 
 ---
 
