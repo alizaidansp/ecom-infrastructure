@@ -30,6 +30,15 @@ This project deploys a containerized 3 tier-application (frontend + backend+ dat
 
 ---
 
+## GitHub Repositories for The Project
+
+
+
+## Source Code Repositories
+- **Frontend Application**: [ecom-frontend](https://github.com/alizaidansp/ecom-frontend) (`main` branch) ![Last Commit](https://img.shields.io/github/last-commit/alizaidansp/ecom-frontend?style=flat-square)
+- **Backend API**: [ecom-backend](https://github.com/alizaidansp/ecom-backend) (`main` branch) ![Last Commit](https://img.shields.io/github/last-commit/alizaidansp/ecom-backend?style=flat-square)
+- **Infrastructure**: [ecom-infrastructure](https://github.com/alizaidansp/ecom-infrastructure/) (`main` branch) ![Last Commit](https://img.shields.io/github/last-commit/alizaidansp/ecom-infrastructure?style=flat-square)
+
 ## Architectural Components  
 ### Core Infrastructure  
 1. **Networking**  
