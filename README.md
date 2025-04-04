@@ -126,12 +126,15 @@ This project deploys a containerized 3 tier-application (frontend + backend+ dat
 3. Docker images pushed to ECR
 4. Required IAM permissions
 5. Ensure execute permissions:
+
+
 ```bash
 chmod +x deploy.sh
 ### Execution
-```bash
+
 # Run deployment script
 ./deploy.sh
+
 ```
 
 
